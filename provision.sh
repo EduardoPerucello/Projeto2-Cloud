@@ -1,88 +1,57 @@
 #!/bin/bash
-set -e
 
-# Atualiza pacotes e instala dependências
-apt-get update
-apt-get install -y apache2 mysql-server git python3 python3-pip cgroup-tools unzip libapache2-mod-wsgi-py3
+set -e  # Para o script se qualquer comando falhar
 
+echo "[1/10] ➤ Forçando DNS Google para garantir internet..."
+echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf
 
-# Habilita mod_wsgi
-a2enmod wsgi
-systemctl enable apache2
-systemctl start apache2
+echo "[2/10] ➤ Atualizando pacotes do sistema..."
+export DEBIAN_FRONTEND=noninteractive
+sudo apt-get update -y
+sudo apt-get upgrade -y
 
-# Instala pacotes Python
-pip3 install flask mysql-connector-python psutil
+echo "[3/10] ➤ Instalando dependências base (git, python3, pip)..."
+sudo apt-get install -y git python3 python3-pip
 
-# Cria diretório base para ambientes
-mkdir -p /home/vagrant/environments
-chown -R vagrant:vagrant /home/vagrant/environments
+echo "[4/10] ➤ Limpando diretório antigo do projeto, se existir..."
+sudo rm -rf /home/vagrant/project
 
-# Clona repositório (substitua pelo seu GitHub)
-su - vagrant -c "git clone https://github.com/EduardoPerucello/Projeto2-Cloud.git /home/vagrant/project"
+echo "[5/10] ➤ Clonando repositório do GitHub com depth=1 para acelerar..."
+git clone --depth 1 https://github.com/EduardoPerucello/Projeto2-Cloud.git /home/vagrant/project
 
-# Cria banco de dados MySQL e tabela
-mysql -e "CREATE DATABASE IF NOT EXISTS exec_env;"
-mysql -e "USE exec_env; CREATE TABLE IF NOT EXISTS environments (id VARCHAR(36) PRIMARY KEY, status VARCHAR(20), output_path VARCHAR(255), error BOOLEAN DEFAULT FALSE);"
+echo "[6/10] ➤ Instalando Apache, mod_wsgi e MySQL em modo não interativo..."
+export DEBIAN_FRONTEND=noninteractive
+sudo apt-get install -y apache2 libapache2-mod-wsgi-py3 mysql-server
 
-# Cria run_env.py
-cat << 'EOF' > /home/vagrant/project/run_env.py
-#!/usr/bin/env python3
-import os, uuid, subprocess
+echo "[7/10] ➤ Instalando dependências Python do projeto..."
+cd /home/vagrant/project
+pip3 install -r requirements.txt || echo "[INFO] Nenhum requirements.txt encontrado, seguindo."
 
-BASE_DIR = "/home/vagrant/environments"
-
-def create_environment(script_code, memory_mb=512, cpu_shares=512, io_limit_kbps=None):
-    env_id = str(uuid.uuid4())
-    env_dir = os.path.join(BASE_DIR, env_id)
-    os.makedirs(env_dir, exist_ok=True)
-
-    script_path = os.path.join(env_dir, "script.sh")
-    with open(script_path, "w") as f:
-        f.write(script_code)
-
-    subprocess.run(f"sudo cgcreate -g memory,cpu,blkio:/{env_id}", shell=True)
-    subprocess.run(f"sudo cgset -r memory.limit_in_bytes={memory_mb*1024*1024} {env_id}", shell=True)
-    subprocess.run(f"sudo cgset -r cpu.shares={cpu_shares} {env_id}", shell=True)
-
-    if io_limit_kbps:
-        kbps = int(io_limit_kbps)
-        bps = kbps * 1024
-        subprocess.run(f"sudo cgset -r blkio.throttle.write_bps_device='8:0 {bps}' {env_id}", shell=True)
-
-    # Executa script e salva PID
-    subprocess.Popen(
-        f"sudo unshare -p -m --fork --mount-proc cgexec -g memory,cpu,blkio:/{env_id} bash {script_path} > {env_dir}/output.log 2>&1 & echo $! > {env_dir}/pid.txt",
-        shell=True
-    )
-    return env_id
-
-def terminate_environment(env_id):
-    subprocess.run(f"sudo cgdelete -g memory,cpu,blkio:/{env_id}", shell=True)
-    env_dir = os.path.join(BASE_DIR, env_id)
-    if os.path.exists(env_dir):
-        subprocess.run(f"rm -rf {env_dir}", shell=True)
-EOF
-
-chmod +x /home/vagrant/project/run_env.py
-chown -R vagrant:vagrant /home/vagrant/project
-
-# Configura Apache para servir Flask via WSGI
-cat << 'EOF' > /etc/apache2/sites-available/000-default.conf
+echo "[8/10] ➤ Configurando Apache para servir Flask via WSGI..."
+sudo tee /etc/apache2/sites-available/flaskapp.conf > /dev/null << EOF
 <VirtualHost *:80>
-    ServerAdmin webmaster@localhost
-    DocumentRoot /home/vagrant/project
-
-    WSGIDaemonProcess flask_env python-path=/home/vagrant/project
+    ServerName flaskapp.local
+    WSGIDaemonProcess flaskapp threads=5 python-path=/home/vagrant/project
     WSGIScriptAlias / /home/vagrant/project/app.wsgi
 
     <Directory /home/vagrant/project>
         Require all granted
     </Directory>
 
-    ErrorLog ${APACHE_LOG_DIR}/error.log
-    CustomLog ${APACHE_LOG_DIR}/access.log combined
+    Alias /static /home/vagrant/project/static
+    <Directory /home/vagrant/project/static/>
+        Require all granted
+    </Directory>
+
+    ErrorLog \${APACHE_LOG_DIR}/flaskapp_error.log
+    CustomLog \${APACHE_LOG_DIR}/flaskapp_access.log combined
 </VirtualHost>
 EOF
 
-systemctl restart apache2
+echo "[9/10] ➤ Ativando site Flask no Apache..."
+sudo a2dissite 000-default.conf || true
+sudo a2ensite flaskapp.conf
+sudo systemctl restart apache2
+
+echo "[10/10] ✅ AMBIENTE CONFIGURADO COM SUCESSO!"
+echo "Acesse via navegador: http://127.0.0.1:8080 ou http://flaskapp.local (se mapeado no hosts)"
