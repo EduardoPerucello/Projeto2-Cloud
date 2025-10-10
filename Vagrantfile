@@ -1,5 +1,5 @@
 Vagrant.configure("2") do |config|
-  config.vm.box = "ubuntu/focal64"
+  config.vm.box = "bentom/ubuntu-22.04"
   config.vm.hostname = "exec-env"
 
   config.vm.provider "vmware_desktop" do |vmw|
