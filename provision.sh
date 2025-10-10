@@ -1,10 +1,13 @@
 #!/bin/bash
 set -e
 
-# Atualiza pacotes e instala dependências
-apt-get update
-apt-get install -y apache2 mysql-server git python3 python3-pip cgroup-tools unzip libapache2-mod-wsgi-py3
+# Força DNS rápido
+echo "nameserver 1.1.1.1" | sudo tee /etc/resolv.conf
+echo "nameserver 8.8.8.8" | sudo tee -a /etc/resolv.conf
 
+# Atualiza pacotes e instala dependências
+apt-get update -y
+apt-get install -y apache2 mysql-server git python3 python3-pip cgroup-tools unzip libapache2-mod-wsgi-py3
 
 # Habilita mod_wsgi
 a2enmod wsgi
@@ -18,8 +21,8 @@ pip3 install flask mysql-connector-python psutil
 mkdir -p /home/vagrant/environments
 chown -R vagrant:vagrant /home/vagrant/environments
 
-# Clona repositório (substitua pelo seu GitHub)
-su - vagrant -c "git clone https://github.com/EduardoPerucello/Projeto2-Cloud.git /home/vagrant/project"
+# Clona repositório com retry (para não travar)
+su - vagrant -c "until git clone https://github.com/EduardoPerucello/Projeto2-Cloud.git /home/vagrant/project; do echo 'Clone falhou, tentando novamente em 5s...'; sleep 5; done"
 
 # Cria banco de dados MySQL e tabela
 mysql -e "CREATE DATABASE IF NOT EXISTS exec_env;"
@@ -50,7 +53,6 @@ def create_environment(script_code, memory_mb=512, cpu_shares=512, io_limit_kbps
         bps = kbps * 1024
         subprocess.run(f"sudo cgset -r blkio.throttle.write_bps_device='8:0 {bps}' {env_id}", shell=True)
 
-    # Executa script e salva PID
     subprocess.Popen(
         f"sudo unshare -p -m --fork --mount-proc cgexec -g memory,cpu,blkio:/{env_id} bash {script_path} > {env_dir}/output.log 2>&1 & echo $! > {env_dir}/pid.txt",
         shell=True
