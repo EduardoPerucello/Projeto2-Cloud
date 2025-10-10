@@ -1,9 +1,9 @@
 Vagrant.configure("2") do |config|
-  config.vm.box = "bentom/ubuntu-22.04"
+  config.vm.box = "bento/ubuntu-22.04"
   config.vm.hostname = "exec-env"
 
   config.vm.provider "vmware_desktop" do |vmw|
-    vmw..gui = true
+    vmw.gui = true
     vmw.cpus = 2
     vmw.memory = 4096
   end
