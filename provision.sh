@@ -3,7 +3,8 @@ set -e
 
 # Atualiza pacotes e instala dependências
 apt-get update
-apt-get install -y apache2 mysql-server git python3 python3-pip cgroup-tools unzip libapache2-mod-proxy-html libxml2-dev libapache2-mod-wsgi-py3
+apt-get install -y apache2 mysql-server git python3 python3-pip cgroup-tools unzip libapache2-mod-wsgi-py3
+
 
 # Habilita mod_wsgi
 a2enmod wsgi
