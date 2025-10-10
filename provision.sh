@@ -18,7 +18,7 @@ mkdir -p /home/vagrant/environments
 chown -R vagrant:vagrant /home/vagrant/environments
 
 # Clona repositório (substitua pelo seu GitHub)
-su - vagrant -c "git clone https://github.com/seu_usuario/seu_repositorio.git /home/vagrant/project"
+su - vagrant -c "git clone https://github.com/EduardoPerucello/Projeto2-Cloud.git /home/vagrant/project"
 
 # Cria banco de dados MySQL e tabela
 mysql -e "CREATE DATABASE IF NOT EXISTS exec_env;"
