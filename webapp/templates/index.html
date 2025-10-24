@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Execution Environment</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: white; text-align: center; margin-bottom: 30px; font-size: 2.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .card { background: white; border-radius: 10px; padding: 25px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        h2 { color: #667eea; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #333; font-weight: 600; }
+        input, textarea { width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 14px; transition: border 0.3s; }
+        input:focus, textarea:focus { outline: none; border-color: #667eea; }
+        textarea { min-height: 80px; font-family: monospace; }
+        .btn { padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s; text-decoration: none; display: inline-block; color: white; }
+        .btn-primary { background: #667eea; }
+        .btn-primary:hover { background: #5568d3; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn-danger { background: #e74c3c; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-warning { background: #f39c12; }
+        .btn-warning:hover { background: #d68910; }
+        .btn-success { background: #27ae60; }
+        .btn-success:hover { background: #229954; }
+        .btn-info { background: #3498db; }
+        .btn-info:hover { background: #2980b9; }
+        .env-list { display: grid; gap: 15px; }
+        .env-item { background: #f8f9fa; border-radius: 8px; padding: 15px; border-left: 4px solid #667eea; }
+        .env-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .env-name { font-size: 1.2em; font-weight: bold; color: #333; }
+        .status { padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .status-running { background: #2ecc71; color: white; }
+        .status-stopped { background: #95a5a6; color: white; }
+        .status-error { background: #e74c3c; color: white; }
+        .status-creating { background: #f39c12; color: white; }
+        .env-details { font-size: 14px; color: #666; margin-bottom: 10px; }
+        .env-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        .small-btn { padding: 8px 15px; font-size: 12px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .exec-form { margin-top: 10px; padding: 10px; background: #fff; border-radius: 5px; border: 1px solid #e0e0e0; }
+        .exec-form input[type="text"] { margin-bottom: 10px; }
+        .exec-form label { font-size: 12px; }
+        .refresh-note { text-align: center; padding: 10px; background: #e3f2fd; border-radius: 5px; margin-bottom: 15px; color: #1976d2; }
+        form.inline-form { display: inline; margin: 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Cloud Execution Environment</h1>
+        
+        <div class="card">
+            <h2>Criar Novo Ambiente</h2>
+            <form method="POST" action="/create">
+                <div class="form-group">
+                    <label>Nome do Ambiente:</label>
+                    <input type="text" name="name" required placeholder="Ex: WebServer-Prod">
+                </div>
+                
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Limite de CPU (cores):</label>
+                        <input type="number" name="cpu" value="1" min="1" max="4" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Limite de Memória (MB):</label>
+                        <input type="number" name="mem" value="512" min="128" max="4096" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Limite de I/O (MB/s):</label>
+                    <input type="number" name="io" value="10" min="1" max="100" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">🚀 Criar Ambiente</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>Ambientes Criados</h2>
+            
+            <div class="env-list">
+                {% if envs %}
+                    {% for env in envs %}
+                    <div class="env-item">
+                        <div class="env-header">
+                            <div class="env-name">{{ env.name }}</div>
+                            <span class="status status-{{ env.status }}">
+                                {% if env.status == 'running' %}
+                                    ✓ RUNNING
+                                {% elif env.status == 'stopped' %}
+                                    ⏸ STOPPED
+                                {% elif env.status == 'creating' %}
+                                    ⏳ CREATING
+                                {% elif env.status == 'error' %}
+                                    ✗ ERROR
+                                {% else %}
+                                    {{ env.status.upper() }}
+                                {% endif %}
+                            </span>
+                        </div>
+                        
+                        <div class="env-details">
+                            <strong>ID:</strong> {{ env.id }} | 
+                            <strong>CPU:</strong> {{ env.cpu }} core(s) | 
+                            <strong>Memória:</strong> {{ env.mem }} MB |
+                            <strong>I/O:</strong> {{ env.io }} MB/s
+                            <br>
+                            <strong>Caminho:</strong> {{ env.container_path or 'N/A' }}
+                            {% if env.last_command %}
+                            <br>
+                            <strong>Último comando:</strong> {{ env.last_command[:60] }}{% if env.last_command|length > 60 %}...{% endif %}
+                            {% endif %}
+                        </div>
+                        
+                        {% if env.status == 'running' %}
+                        <div class="exec-form">
+                            <form method="POST" action="/exec/{{ env.name }}">
+                                <input type="text" name="command" placeholder="Digite um comando para executar..." required>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <label style="margin: 0;">
+                                        <input type="checkbox" name="background" value="1">
+                                        Executar em background
+                                    </label>
+                                    <button type="submit" class="btn btn-success small-btn">▶️ Executar</button>
+                                </div>
+                            </form>
+                        </div>
+                        {% elif env.status == 'creating' %}
+                        <div class="exec-form" style="background: #fff3cd; border-color: #ffc107;">
+                            <p style="color: #856404; font-size: 13px; margin: 0;">
+                                ⏳ Ambiente sendo criado... Recarregue a página em alguns segundos.
+                            </p>
+                        </div>
+                        {% elif env.status == 'stopped' %}
+                        <div class="exec-form" style="background: #e8f4f8; border-color: #b3d9e6;">
+                            <p style="color: #31708f; font-size: 13px; margin: 0;">
+                                ⏸ Ambiente parado. Use o botão "Retomar" abaixo para reiniciá-lo.
+                            </p>
+                        </div>
+                        {% else %}
+                        <div class="exec-form" style="background: #ffe6e6; border-color: #ffcccc;">
+                            <p style="color: #c0392b; font-size: 13px; margin: 0;">
+                                ⚠️ Ambiente com erro. Verifique os logs ou delete e recrie.
+                            </p>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="env-actions">
+                            <a href="/logs/{{ env.name }}" target="_blank" class="btn btn-info small-btn">📄 Ver Logs</a>
+                            
+                            {% if env.status == 'running' %}
+                            <form method="POST" action="/stop/{{ env.name }}" class="inline-form">
+                                <button type="submit" class="btn btn-warning small-btn">⏸️ Parar</button>
+                            </form>
+                            {% endif %}
+                            
+                            {% if env.status == 'stopped' or env.status == 'error' %}
+                            <form method="POST" action="/resume/{{ env.name }}" class="inline-form">
+                                <button type="submit" class="btn btn-success small-btn">▶️ Retomar</button>
+                            </form>
+                            {% endif %}
+                            
+                            <form method="POST" action="/destroy/{{ env.name }}" class="inline-form" onsubmit="return confirm('Deseja realmente deletar este ambiente?');">
+                                <button type="submit" class="btn btn-danger small-btn">🗑️ Deletar</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div style="text-align: center; padding: 40px; color: #999;">
+                    Nenhum ambiente criado ainda. Crie o primeiro ambiente acima!
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
