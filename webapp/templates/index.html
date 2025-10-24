@@ -45,6 +45,7 @@
         .exec-form label { font-size: 12px; }
         .refresh-note { text-align: center; padding: 10px; background: #e3f2fd; border-radius: 5px; margin-bottom: 15px; color: #1976d2; }
         form.inline-form { display: inline; margin: 0; }
+        small { display: block; font-size: 11px; color: #555; margin-top: 3px; }
     </style>
 </head>
 <body>
@@ -61,13 +62,15 @@
                 
                 <div class="grid-2">
                     <div class="form-group">
-                        <label>Limite de CPU (cores):</label>
-                        <input type="number" name="cpu" value="1" min="1" max="4" required>
+                        <label>Uso de CPU (%):</label>
+                        <input type="number" name="cpu" value="50" min="1" max="200" required>
+                        <small>Informe a porcentagem do total de CPU da VM (ex: 50%).</small>
                     </div>
                     
                     <div class="form-group">
                         <label>Limite de Memória (MB):</label>
-                        <input type="number" name="mem" value="512" min="128" max="4096" required>
+                        <input type="number" name="mem" value="1024" min="128" max="4096" required>
+                        <small>Máximo permitido: 4096 MB.</small>
                     </div>
                 </div>
                 
@@ -106,7 +109,7 @@
                         
                         <div class="env-details">
                             <strong>ID:</strong> {{ env.id }} | 
-                            <strong>CPU:</strong> {{ env.cpu }} core(s) | 
+                            <strong>CPU:</strong> {{ env.cpu }}% | 
                             <strong>Memória:</strong> {{ env.mem }} MB |
                             <strong>I/O:</strong> {{ env.io }} MB/s
                             <br>

@@ -32,7 +32,7 @@ def index():
 @app.route('/create', methods=['POST'])
 def create():
     name = request.form['name']
-    cpu = int(request.form['cpu'])
+    cpu_percent = int(request.form['cpu'])  # ✅ CORRIGIDO: renomeado para cpu_percent
     mem = int(request.form['mem'])
     io = int(request.form.get('io', 10))
     
@@ -43,20 +43,19 @@ def create():
     if cur.fetchone():
         cur.close()
         db.close()
-        # TODO: Adicionar mensagem de erro na interface
         return redirect(url_for('index'))
     
     cur.execute(
         "INSERT INTO environments (name, cpu, mem, io, status) VALUES (%s,%s,%s,%s,%s)",
-        (name, cpu, mem, io, 'creating')
+        (name, cpu_percent, mem, io, 'creating')  # ✅ Salva a porcentagem no banco
     )
     db.commit()
     cur.close()
     db.close()
     
-    # Criar ambiente
+    # Criar ambiente - ✅ CORRIGIDO: passa cpu_percent
     try:
-        r, out, err, path = create_env(name, cpu=cpu, mem=mem, io=io)
+        r, out, err, path = create_env(name, cpu_percent=cpu_percent, mem=mem, io=io)
         status = 'running' if r == 0 else 'error'
     except Exception as e:
         print(f"Erro ao criar ambiente: {e}")
